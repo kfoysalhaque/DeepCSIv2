@@ -10,7 +10,7 @@ MIMO Compressed Channel Feedback](https://ieeexplore.ieee.org/abstract/document/
 
 <p align="center">
 <img src="Images/DeepCSI-STA.png"
-     alt="Markdown Monster icon" width="600" height="200"
+     alt="Markdown Monster icon" width="600" height="250"
      style="float: center;" />
 </p>
 
