@@ -8,6 +8,12 @@ MIMO Compressed Channel Feedback](https://ieeexplore.ieee.org/abstract/document/
 ### We present DeepCSIv2, a data-driven radio fingerprinting (RFP) algorithm to characterize Wi-Fi devices acting as stations (STAs) at the physical layer. DeepCSIv2 is based on a neural network architecture that automatically extracts the STA’s radio fingerprint from the feedback captured over the air and identifies the device.
 <br/>
 
+<p align="center">
+<img src="Images/DeepCSIv2.png"
+     alt="Markdown Monster icon" width="600" height="200"
+     style="float: center;" />
+</p>
+
 If you find the project useful and you use this code, please cite our paper:
 <br/>
 
