@@ -32,6 +32,8 @@ If you find the project useful and you use this code, please cite our paper:
 <br/>
 <br/>
 
+### Please [download the dataset](https://huggingface.co/datasets/foysalhaque/DeepCSIv2/tree/main) and keep in the ```DeepCSIv2/input_files``` directory. You can directly download the Vmatrices or download the raw traces and extract the Vmatrices. The extraction procedure is also provided.
+
 ### Extract the beamforming feedback with [Wi-BFI Tool](https://github.com/kfoysalhaque/Wi-BFI)
 ```bash
 python main_extract_batch.py '<trace_dir>' '<standard>' '<MIMO>' '<Antenna-config>' '<BW>' '<packets to process>' '<vmatrices_dir>' '<bfa_dir>'
