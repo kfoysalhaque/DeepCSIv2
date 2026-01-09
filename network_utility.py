@@ -1,6 +1,5 @@
 import tensorflow as tf
 
-
 class ConvNormalization(tf.keras.layers.Layer):
     def __init__(self, filters, kernel_size, strides=(1, 1), padding='same', activation='selu',
                  kernel_initializer='lecun_normal', bias_initializer='zeros', bn=False, name_layer=None, **kwargs):
@@ -125,13 +124,14 @@ def att_network(input_sh, num_classes):
     x = ConvNormalization(128, (1, 3), name_layer=base_name + '_conv5')(x)
     x = tf.keras.layers.MaxPool2D(pool_size=(1, 2), strides=(1, 2), name=base_name + '_maxpool5')(x)
 
-    x2_avg = tf.reduce_mean(x, axis=3, keepdims=True)
-    x2_max = tf.reduce_max(x, axis=3, keepdims=True)
-    x2_concat = tf.concat([x2_avg, x2_max], axis=3)
+    # ---- FIX: wrap raw TF ops so they work with KerasTensors in Functional API ----
+    x2_avg = tf.keras.layers.Lambda(lambda t: tf.reduce_mean(t, axis=3, keepdims=True))(x)
+    x2_max = tf.keras.layers.Lambda(lambda t: tf.reduce_max(t, axis=3, keepdims=True))(x)
+    x2_concat = tf.keras.layers.Concatenate(axis=3)([x2_avg, x2_max])
     att2 = tf.keras.layers.Conv2D(1, (1, 5), activation='sigmoid', padding='same')(x2_concat)
-    x_att = tf.multiply(x, att2)
-
-    x = tf.add(x, x_att)
+    x_att = tf.keras.layers.Multiply()([x, att2])
+    x = tf.keras.layers.Add()([x, x_att])
+    # ---------------------------------------------------------------------------
 
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(128, activation='selu', kernel_initializer='lecun_normal',
@@ -166,13 +166,14 @@ def att_network_hyper_selection(input_sh, num_classes, filters_dimension, kernel
         x = tf.keras.layers.MaxPool2D(pool_size=(1, 2), strides=(1, 2),
                                       name=base_name + '_maxpool1' + str(idx_filter + 1))(x)
 
-    x2_avg = tf.reduce_mean(x, axis=3, keepdims=True)
-    x2_max = tf.reduce_max(x, axis=3, keepdims=True)
-    x2_concat = tf.concat([x2_avg, x2_max], axis=3)
+    # ---- FIX: wrap raw TF ops so they work with KerasTensors in Functional API ----
+    x2_avg = tf.keras.layers.Lambda(lambda t: tf.reduce_mean(t, axis=3, keepdims=True))(x)
+    x2_max = tf.keras.layers.Lambda(lambda t: tf.reduce_max(t, axis=3, keepdims=True))(x)
+    x2_concat = tf.keras.layers.Concatenate(axis=3)([x2_avg, x2_max])
     att2 = tf.keras.layers.Conv2D(1, (1, 5), activation='sigmoid', padding='same')(x2_concat)
-    x_att = tf.multiply(x, att2)
-
-    x = tf.add(x, x_att)
+    x_att = tf.keras.layers.Multiply()([x, att2])
+    x = tf.keras.layers.Add()([x, x_att])
+    # ---------------------------------------------------------------------------
 
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(128, activation='selu', kernel_initializer='lecun_normal',

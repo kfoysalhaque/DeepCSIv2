@@ -5,6 +5,7 @@ import shutil
 from network_utility import *
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+import tensorflow as tf
 
 
 if __name__ == '__main__':
@@ -25,10 +26,14 @@ if __name__ == '__main__':
 
     prefix = args.prefix
     model_name = args.model_name
-    list_cache_files = os.listdir('./cache_files/')
-    for file_cache in list_cache_files:
-        if file_cache.startswith(model_name):
-            os.remove('./cache_files/' + file_cache)
+
+    # Clean caches/logs
+    if os.path.exists('./cache_files/'):
+        list_cache_files = os.listdir('./cache_files/')
+        for file_cache in list_cache_files:
+            if file_cache.startswith(model_name):
+                os.remove('./cache_files/' + file_cache)
+
     if os.path.exists('./logs/train/'):
         shutil.rmtree('./logs/train/')
     if os.path.exists('./logs/validation/'):
@@ -36,41 +41,37 @@ if __name__ == '__main__':
 
     scenario = args.scenario
     if scenario == 'S1':
-        # S1
         pos_train_val = [1, 2, 3]
         train_fraction = [0, 0.64]
         val_fraction = [0.64, 0.8]
         pos_test = [1, 2, 3]
         test_fraction = [0.8, 1]
     elif scenario == 'S2':
-        # S2
         pos_train_val = [1]
         train_fraction = [0, 0.8]
         val_fraction = [0.8, 1]
         pos_test = [1]
         test_fraction = [0, 1]
     elif scenario == 'S3':
-        # S3
         pos_train_val = [2]
         train_fraction = [0, 0.8]
         val_fraction = [0.8, 1]
         pos_test = [2]
         test_fraction = [0, 1]
     elif scenario == 'S4':
-        # S4 mobility
         pos_train_val = [3]
         train_fraction = [0, 0.8]
         val_fraction = [0.8, 1]
         pos_test = [3]
         test_fraction = [0, 1]
-
     elif scenario == 'S5':
-        # S4 mobility
         pos_train_val = [1, 2]
         train_fraction = [0, 0.8]
         val_fraction = [0.8, 1]
         pos_test = [3]
         test_fraction = [0, 1]
+    else:
+        raise ValueError('Scenario must be one of {S1,S2,S3,S4,S5}')
 
     # Positions and device IDs
     num_pos = args.positions
@@ -88,8 +89,7 @@ if __name__ == '__main__':
     for lab_act in tx_antennas.split(','):
         lab_act = int(lab_act)
         if lab_act >= M:
-            print('error in the tx_antennas input arg')
-            break
+            raise ValueError('error in the tx_antennas input arg')
         tx_antennas_list.append(lab_act)
 
     rx_antennas = args.rx_antennas
@@ -97,8 +97,7 @@ if __name__ == '__main__':
     for lab_act in rx_antennas.split(','):
         lab_act = int(lab_act)
         if lab_act >= N:
-            print('error in the rx_antennas input arg')
-            break
+            raise ValueError('error in the rx_antennas input arg')
         rx_antennas_list.append(lab_act)
 
     # Subcarriers selection
@@ -107,21 +106,19 @@ if __name__ == '__main__':
     if bandwidth == 160:
         num_selected_subcarriers = 500
     elif bandwidth == 80:
-        num_selected_subcarriers = 250  # check
+        num_selected_subcarriers = 250
         selected_subcarriers_idxs = np.arange(0, 250)
     elif bandwidth == 40:
-        num_selected_subcarriers = 125  # check
+        num_selected_subcarriers = 125
         selected_subcarriers_idxs = np.arange(0, 125)
-
     elif bandwidth == 20:
-        num_selected_subcarriers = 62  # check
+        num_selected_subcarriers = 62
         selected_subcarriers_idxs = np.arange(0, 62)
-
     elif bandwidth == 10:
-        num_selected_subcarriers = 30  # check
+        num_selected_subcarriers = 30
         selected_subcarriers_idxs = np.arange(0, 30)
-
-
+    else:
+        raise ValueError("bandwidth must be one of {10,20,40,80,160}")
 
     name_files_train = []
     labels_train = []
@@ -161,40 +158,43 @@ if __name__ == '__main__':
 
     batch_size = 32
     name_cache_train = './cache_files/' + model_name + 'cache_train'
-    dataset_train, num_samples_train, labels_complete_train = create_dataset(name_files_train, labels_train, batch_size,
-                                                                             M, tx_antennas_list, N, rx_antennas_list,
-                                                                             shuffle=True, cache_file=name_cache_train,
-                                                                             prefetch=True, repeat=True,
-                                                                             start_fraction=train_fraction[0],
-                                                                             end_fraction=train_fraction[1],
-                                                                             selected_subcarriers_idxs=
-                                                                             selected_subcarriers_idxs)
+    dataset_train, num_samples_train, labels_complete_train = create_dataset(
+        name_files_train, labels_train, batch_size,
+        M, tx_antennas_list, N, rx_antennas_list,
+        shuffle=True, cache_file=name_cache_train,
+        prefetch=True, repeat=True,
+        start_fraction=train_fraction[0],
+        end_fraction=train_fraction[1],
+        selected_subcarriers_idxs=selected_subcarriers_idxs
+    )
 
     name_cache_val = './cache_files/' + model_name + 'cache_val'
-    dataset_val, num_samples_val, labels_complete_val = create_dataset(name_files_val, labels_val, batch_size,
-                                                                       M, tx_antennas_list, N, rx_antennas_list,
-                                                                       shuffle=False, cache_file=name_cache_val,
-                                                                       prefetch=True, repeat=True,
-                                                                       start_fraction=val_fraction[0],
-                                                                       end_fraction=val_fraction[1],
-                                                                       selected_subcarriers_idxs=
-                                                                       selected_subcarriers_idxs)
+    dataset_val, num_samples_val, labels_complete_val = create_dataset(
+        name_files_val, labels_val, batch_size,
+        M, tx_antennas_list, N, rx_antennas_list,
+        shuffle=False, cache_file=name_cache_val,
+        prefetch=True, repeat=True,
+        start_fraction=val_fraction[0],
+        end_fraction=val_fraction[1],
+        selected_subcarriers_idxs=selected_subcarriers_idxs
+    )
 
     name_cache_test = './cache_files/' + model_name + 'cache_test'
-    dataset_test, num_samples_test, labels_complete_test = create_dataset(name_files_test, labels_test, batch_size,
-                                                                          M, tx_antennas_list, N, rx_antennas_list,
-                                                                          shuffle=False, cache_file=name_cache_test,
-                                                                          prefetch=True, repeat=True,
-                                                                          start_fraction=test_fraction[0],
-                                                                          end_fraction=test_fraction[1],
-                                                                          selected_subcarriers_idxs=
-                                                                          selected_subcarriers_idxs)
+    dataset_test, num_samples_test, labels_complete_test = create_dataset(
+        name_files_test, labels_test, batch_size,
+        M, tx_antennas_list, N, rx_antennas_list,
+        shuffle=False, cache_file=name_cache_test,
+        prefetch=True, repeat=True,
+        start_fraction=test_fraction[0],
+        end_fraction=test_fraction[1],
+        selected_subcarriers_idxs=selected_subcarriers_idxs
+    )
 
     IQ_dimension = 2
     N_considered = len(rx_antennas_list)
     M_considered = len(tx_antennas_list)
     input_shape = (N_considered, num_selected_subcarriers, M_considered * IQ_dimension)
-    if M - 1 in tx_antennas_list:
+    if (M - 1) in tx_antennas_list:
         # -1 because last tx antenna has only real part
         input_shape = (N_considered, num_selected_subcarriers, M_considered * IQ_dimension - 1)
     print(input_shape)
@@ -230,13 +230,12 @@ if __name__ == '__main__':
         model_name = model_name + hyper_parameters + '_'
         optimiz = tf.keras.optimizers.Adam(learning_rate=3E-5)
     else:
-        print('Allowed values for the model_type argument are: convolutional, inception, dense, attention, '
-              'convolutional_hyper_selection')
+        raise ValueError('Allowed values: convolutional, attention, convolutional_hyper_selection*, attention_hyper_selection*')
 
     model_net.summary()
 
     # TRAIN
-    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits='True')
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     model_net.compile(optimizer=optimiz, loss=loss, metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
     train_steps_per_epoch = int(np.ceil(num_samples_train / batch_size))
@@ -253,25 +252,35 @@ if __name__ == '__main__':
                 '_bandwidth' + str(bandwidth) + \
                 '_MOD' + args.model_type
 
-    name_model = './network_models/' + name_save + 'network.h5'
+    # ---- UPDATED: Keras 3 requires .keras for full-model checkpoints ----
+    name_model = './network_models/' + name_save + 'network.keras'
 
-    callback_save = tf.keras.callbacks.ModelCheckpoint(name_model, save_freq='epoch', save_best_only=True,
-                                                       monitor='val_sparse_categorical_accuracy')
+    callback_save = tf.keras.callbacks.ModelCheckpoint(
+        filepath=name_model,
+        save_freq='epoch',
+        save_best_only=True,
+        monitor='val_sparse_categorical_accuracy'
+    )
+    # -------------------------------------------------------------------
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir="./logs")
 
-    results = model_net.fit(dataset_train, epochs=30, steps_per_epoch=train_steps_per_epoch,
-                            validation_data=dataset_val, validation_steps=val_steps_per_epoch,
-                            callbacks=[callback_save, tensorboard_callback])
+    results = model_net.fit(
+        dataset_train,
+        epochs=30,
+        steps_per_epoch=train_steps_per_epoch,
+        validation_data=dataset_val,
+        validation_steps=val_steps_per_epoch,
+        callbacks=[callback_save, tensorboard_callback, callback_stop]
+    )
 
+    # Load the best saved model
     custom_objects = {'ConvNormalization': ConvNormalization}
-
     best_model = tf.keras.models.load_model(name_model, custom_objects=custom_objects)
     model_net = best_model
 
     # TEST
     prediction_test = model_net.predict(dataset_test, steps=test_steps_per_epoch)[:len(labels_complete_test)]
-
     labels_pred_test = np.argmax(prediction_test, axis=1)
 
     labels_complete_test_array = np.asarray(labels_complete_test)
@@ -286,7 +295,6 @@ if __name__ == '__main__':
 
     # VAL
     prediction_val = model_net.predict(dataset_val, steps=val_steps_per_epoch)[:len(labels_complete_val)]
-
     labels_pred_val = np.argmax(prediction_val, axis=1)
 
     labels_complete_val_array = np.asarray(labels_complete_val)
@@ -301,18 +309,18 @@ if __name__ == '__main__':
 
     # TRAIN TEST
     name_cache_train_test = './cache_files/' + model_name + 'cache_train_test'
-    dataset_train, num_samples_train, labels_complete_train = create_dataset(name_files_train, labels_train, batch_size,
-                                                                             M, tx_antennas_list, N, rx_antennas_list,
-                                                                             shuffle=False,
-                                                                             cache_file=name_cache_train_test,
-                                                                             prefetch=True, repeat=True,
-                                                                             start_fraction=train_fraction[0],
-                                                                             end_fraction=train_fraction[1],
-                                                                             selected_subcarriers_idxs=
-                                                                             selected_subcarriers_idxs)
+    dataset_train, num_samples_train, labels_complete_train = create_dataset(
+        name_files_train, labels_train, batch_size,
+        M, tx_antennas_list, N, rx_antennas_list,
+        shuffle=False,
+        cache_file=name_cache_train_test,
+        prefetch=True, repeat=True,
+        start_fraction=train_fraction[0],
+        end_fraction=train_fraction[1],
+        selected_subcarriers_idxs=selected_subcarriers_idxs
+    )
 
     prediction_train = model_net.predict(dataset_train, steps=train_steps_per_epoch)[:len(labels_complete_train)]
-
     labels_pred_train = np.argmax(prediction_train, axis=1)
 
     labels_complete_train_array = np.asarray(labels_complete_train)
@@ -320,7 +328,8 @@ if __name__ == '__main__':
                                               labels=labels_IDs,
                                               normalize='true')
     precision_train_test, recall_train_test, fscore_train_test, _ = precision_recall_fscore_support(
-        labels_complete_train_array, labels_pred_train, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        labels_complete_train_array, labels_pred_train, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    )
     accuracy_train_test = accuracy_score(labels_complete_train_array, labels_pred_train)
     print('Accuracy train: %.5f' % accuracy_train_test)
 
@@ -336,6 +345,5 @@ if __name__ == '__main__':
                     }
 
     name_file = './outputs/' + name_save + '.txt'
-
     with open(name_file, "wb") as fp:
         pickle.dump(metrics_dict, fp)
